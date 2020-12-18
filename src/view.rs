@@ -82,6 +82,26 @@ pub fn modules() -> impl Widget<AppState> {
     SizedBox::new(row).fix_height(32.).background(Color::WHITE)
 }
 
+fn single_map_module() -> impl Widget<Canvas> {
+    let single_module = SizedBox::new(ViewCanvas::new())
+        .fix_height(32.)
+        .fix_width(32.);
+
+    single_module
+}
+
+fn map_row() -> impl Widget<Vector<Canvas>> {
+    List::new(single_map_module).horizontal()
+}
+
+fn map_grid() -> impl Widget<Vector<Vector<Canvas>>> {
+    List::new(map_row)
+}
+
+pub fn map_window() -> impl Widget<AppState> {
+    map_grid().lens(AppState::map)
+}
+
 pub fn build_ui() -> impl Widget<AppState> {
     let canvas = PaintCanvas::new();
 

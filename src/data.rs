@@ -10,12 +10,15 @@ use druid::{
     Env, EventCtx, ImageBuf, Selector,
 };
 use druid::{Color, Data, Lens};
-use image::{GrayImage, ImageBuffer, Pixel, RgbImage};
+use image::{imageops, DynamicImage, GrayImage, ImageBuffer, Pixel, RgbImage};
+use rand::Rng;
 
-pub const CANVAS_SIZE: usize = 16;
+pub const CANVAS_SIZE: usize = 8;
+pub const MAP_SIZE: usize = 16;
 
 pub const SAVE_CANVAS: Selector = Selector::new("tile-wave.save-canvas");
 pub const CLEAR_CANVAS: Selector = Selector::new("tile-wave.clear-canvas");
+pub const SHOW_MAP_WINDOW: Selector = Selector::new("tile-wave.show-map-window");
 
 #[derive(Clone, Data, Lens)]
 pub struct AppState {
@@ -23,6 +26,7 @@ pub struct AppState {
     pub modules: Vector<Canvas>,
     pub selected_color: Color,
     pub palette: Vector<Color>,
+    pub map: Vector<Vector<Canvas>>,
 }
 
 impl AppState {
@@ -32,11 +36,39 @@ impl AppState {
             modules: vector![],
             selected_color: Color::WHITE,
             palette: vector![Color::BLACK, Color::WHITE, Color::rgb8(10, 127, 127)],
+            map: vector![],
         };
 
         state.load_modules_from_path("tile_images");
 
         state
+    }
+
+    pub fn fill_map(&mut self) {
+        let mut rng = rand::thread_rng();
+        let mut map = vector![];
+        for _ in 0..MAP_SIZE {
+            let mut row = vector![];
+            for _ in 0..MAP_SIZE {
+                let index: usize = rng.gen_range(0, self.modules.len());
+                let mut module = self.modules[index].clone();
+                let rotated: bool = rng.gen();
+                let flipped_horizontal: bool = rng.gen();
+                let flipped_vertical: bool = rng.gen();
+                if rotated {
+                    module.rotate_90();
+                }
+                if flipped_horizontal {
+                    module.flip_horizontal();
+                }
+                if flipped_vertical {
+                    module.flip_vertical();
+                }
+                row.push_back(module);
+            }
+            map.push_back(row);
+        }
+        self.map = map;
     }
 
     pub fn load_modules_from_path(&mut self, path: &str) {
@@ -45,6 +77,9 @@ impl AppState {
             let path = entry.path();
             let canvas = Canvas::new_from_image(&path, self.next_id());
             self.modules.push_back(canvas)
+        }
+        if self.modules.len() == 0 {
+            self.modules.push_back(Canvas::new(self.next_id()));
         }
     }
 
@@ -136,6 +171,24 @@ impl Canvas {
         }
     }
 
+    pub fn image_to_storage(img: RgbImage) -> Vector<Color> {
+        let mut storage: [Color; CANVAS_SIZE * CANVAS_SIZE] =
+            [Color::BLACK; CANVAS_SIZE * CANVAS_SIZE];
+
+        for (x, y, pixel) in img.enumerate_pixels() {
+            let pixel = pixel.channels();
+            let r = pixel[0];
+            let g = pixel[1];
+            let b = pixel[2];
+            let color = Color::rgb8(r.clone(), g.clone(), b.clone());
+            storage[(x as usize * CANVAS_SIZE) + y as usize] = color;
+        }
+
+        let storage = Vector::from(storage.as_ref());
+
+        storage
+    }
+
     pub fn new_from_image(path: &PathBuf, id: usize) -> Self {
         let img = image::open(path).unwrap().into_rgb8();
 
@@ -168,7 +221,7 @@ impl Canvas {
             .collect();
     }
 
-    pub fn save_as_image(&self) {
+    pub fn as_image(&self) -> RgbImage {
         let mut imgbuf: RgbImage = ImageBuffer::new(CANVAS_SIZE as u32, CANVAS_SIZE as u32);
 
         for (x, y, pixel) in imgbuf.enumerate_pixels_mut() {
@@ -182,9 +235,33 @@ impl Canvas {
             *pixel = image::Rgb([r, g, b]);
         }
 
+        imgbuf
+    }
+
+    pub fn save_as_image(&self) {
+        let imgbuf = self.as_image();
+
         let path = format!("tile_images/test_{}.png", self.id);
 
         imgbuf.save(path).unwrap();
+    }
+
+    pub fn rotate_90(&mut self) {
+        let mut img = self.as_image();
+        let rotated = imageops::rotate90(&mut img);
+        self.storage = Self::image_to_storage(rotated);
+    }
+
+    pub fn flip_horizontal(&mut self) {
+        let mut img = self.as_image();
+        let flipped = imageops::flip_horizontal(&mut img);
+        self.storage = Self::image_to_storage(flipped);
+    }
+
+    pub fn flip_vertical(&mut self) {
+        let mut img = self.as_image();
+        let flipped = imageops::flip_vertical(&mut img);
+        self.storage = Self::image_to_storage(flipped);
     }
 }
 

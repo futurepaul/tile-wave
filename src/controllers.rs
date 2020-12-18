@@ -3,7 +3,7 @@ use druid::{
     MenuItem, Widget,
 };
 
-use crate::data::{AppState, CLEAR_CANVAS, SAVE_CANVAS};
+use crate::data::{AppState, CLEAR_CANVAS, SAVE_CANVAS, SHOW_MAP_WINDOW};
 
 pub struct ContextMenuController;
 
@@ -23,4 +23,5 @@ fn make_context_menu<T: Data>() -> MenuDesc<T> {
     MenuDesc::empty()
         .append(MenuItem::new(LocalizedString::new("Save"), SAVE_CANVAS))
         .append(MenuItem::new(LocalizedString::new("Clear"), CLEAR_CANVAS))
+        .append(MenuItem::new(LocalizedString::new("Show Map"), SHOW_MAP_WINDOW))
 }

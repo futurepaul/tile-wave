@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 druid = { git = "https://github.com/linebender/druid", rev="a06469e", features=["im", "image"]}
 image = "0.23.10"
+rand = "0.7.3"
